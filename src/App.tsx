@@ -1,7 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-// import { UserWarning } from './UserWarning';
 import {
   deleteTodo,
   getTodos,
@@ -40,6 +39,18 @@ type TempTodo = {
   title: string;
 };
 
+function getVisibleTodos(selectedFilter: DefaultFilter, todos: TodoType[]) {
+  if (selectedFilter === DefaultFilter.All) {
+    return todos;
+  }
+
+  if (selectedFilter === DefaultFilter.Active) {
+    return todos.filter(todo => todo.completed === false);
+  }
+
+  return todos.filter(todo => todo.completed === true);
+}
+
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<TodoType[]>(defaultState.todos);
   const [errorMessage, setErrorMessage] = useState<string>(
@@ -49,10 +60,6 @@ export const App: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<DefaultFilter>(
     defaultState.selectedFilter,
   );
-  const [filteredTodos, setFilteredTodos] = useState<TodoType[]>(
-    defaultState.filteredTodos,
-  );
-  const activeTodos = useRef<number>();
   const [disabledInput, setDisabledInput] = useState(defaultState.disableInput);
   const [tempTodo, setTempTodo] = useState<TempTodo | null>(
     defaultState.tempTodo,
@@ -61,6 +68,13 @@ export const App: React.FC = () => {
     useState<boolean>(false);
   const [formFocus, setFormFocus] = useState(false);
   const [todosToLoad, setTodosToLoad] = useState<number[]>([]);
+
+  const activeTodosCount = todos.filter(todo => !todo.completed).length;
+
+  const filteredTodos = useMemo(
+    () => getVisibleTodos(selectedFilter, todos),
+    [selectedFilter, todos],
+  );
 
   useEffect(() => {
     const atLeastOneTodoCompleted = todos.some(todo => todo.completed === true);
@@ -110,23 +124,6 @@ export const App: React.FC = () => {
       }, 3000);
     }
   }, [errorMessage]);
-
-  useEffect(() => {
-    if (selectedFilter === DefaultFilter.All) {
-      setFilteredTodos(todos);
-    } else if (selectedFilter === DefaultFilter.Active) {
-      setFilteredTodos(todos.filter(todo => todo.completed === false));
-    } else {
-      setFilteredTodos(todos.filter(todo => todo.completed === true));
-    }
-  }, [selectedFilter, todos]);
-
-  useEffect(() => {
-    activeTodos.current = todos.reduce(
-      (prev, todo) => (todo.completed ? prev : prev + 1),
-      0,
-    );
-  }, [todos]);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -346,7 +343,6 @@ export const App: React.FC = () => {
 
       <div className="todoapp__content">
         <header className="todoapp__header">
-          {/* this button should have `active` class only if all todos are completed */}
           {todos.length > 0 && (
             <button
               type="button"
@@ -358,7 +354,6 @@ export const App: React.FC = () => {
             />
           )}
 
-          {/* Add a todo on form submit */}
           <NewTodo
             handleNewTodo={handleNewTodo}
             disableInput={disabledInput}
@@ -389,20 +384,16 @@ export const App: React.FC = () => {
           />
         )}
 
-        {/* Hide the footer if there are no todos */}
         {todos.length > 0 && (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
-              {activeTodos.current} items left
+              {activeTodosCount} items left
             </span>
 
-            {/* Active link should have the 'selected' class */}
             <Filter
               filterValue={selectedFilter}
               onSelectFilter={setSelectedFilter}
             />
-
-            {/* this button should be disabled if there are no completed todos */}
 
             <button
               type="button"
@@ -417,8 +408,6 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      {/* DON'T use conditional rendering to hide the notification */}
-      {/* Add the 'hidden' class to hide the message smoothly */}
       <div
         data-cy="ErrorNotification"
         className={cn(
